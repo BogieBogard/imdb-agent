@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="10" time="94.771" timestamp="2026-01-18T13:53:42.221380-06:00" hostname="Matthews-MacBook-Pro.local"><testcase classname="tests.test_semantic" name="test_question_2_top_5_movies_2019" time="10.375" /><testcase classname="tests.test_semantic" name="test_question_6_top_10_movies_1m_votes_low_gross" time="14.616" /><testcase classname="tests.test_semantic" name="test_question_8_spielberg_scifi_summaries" time="11.021" /><testcase classname="tests.test_semantic" name="test_question_9_police_movies_before_1990" time="8.556" /><testcase classname="tests.test_deterministic" name="test_question_1_matrix_release" time="2.470" /><testcase classname="tests.test_deterministic" name="test_question_3_comedy_movies_2010_2020" time="10.836" /><testcase classname="tests.test_deterministic" name="test_question_5_top_directors_gross" time="10.240" /><testcase classname="tests.test_deterministic" name="test_question_7_comedy_death" time="8.294"><failure message="AssertionError: Expected at least 2 of ['Harold and Maude', 'Knives Out', '50/50', 'An Anand', 'Young Frankenstein']. Got: The movie &quot;Harold and Maude&quot; (1971) is a comedy that involves themes of death or dead people.&#10;assert 1 &gt;= 2">movie_agent = &lt;agent.MovieAgent object at 0x11c1c67b0&gt;
+
+    def test_question_7_comedy_death(movie_agent):
+        """
+        Question: List of movies from the comedy genre where there is death or dead people involved. Hint, use overview column.
+        """
+        response = movie_agent.run("List of movies from the comedy genre where there is death or dead people involved. Hint, use overview column.")
+    
+        # Check for some expected keywords or titles based on known good output
+        expected_titles = ["Harold and Maude", "Knives Out", "50/50", "An Anand", "Young Frankenstein"]
+        found_count = sum(1 for t in expected_titles if t in response)
+&gt;       assert found_count &gt;= 2, f"Expected at least 2 of {expected_titles}. Got: {response}"
+E       AssertionError: Expected at least 2 of ['Harold and Maude', 'Knives Out', '50/50', 'An Anand', 'Young Frankenstein']. Got: The movie "Harold and Maude" (1971) is a comedy that involves themes of death or dead people.
+E       assert 1 &gt;= 2
+
+tests/test_deterministic.py:53: AssertionError</failure></testcase><testcase classname="tests.test_deterministic" name="test_question_6_top_10_movies_1m_votes_low_gross_deterministic" time="13.464" /><testcase classname="tests.test_deterministic" name="test_question_4_horror_movies_meta_85_imdb_8" time="4.838" /></testsuite></testsuites>
