@@ -1,6 +1,3 @@
-RealPage Take Home Assignment 
- 
- 
 Problem Statement: 
 Build a Gen AI powered conversational voice agent that uses the IMDB dataset to answer various questions.  
 Constraints: 
