@@ -27,3 +27,8 @@ To see exactly what changed in the test output (stdout), use `diff`:
 ```bash
 diff test_reports/baseline.txt test_reports/current.txt
 ```
+
+### 4. To run a specific test, use this format for your command:
+```
+python -m pytest tests/test_ambiguity.py::TestAmbiguityModule::test_high_ambiguity_trigger
+```

@@ -38,12 +38,13 @@ class MovieAgent:
         pd.set_option('display.max_colwidth', None)
         
         # Initialize LLM
-        self.llm = ChatOpenAI(temperature=0, model="gpt-4o")
+        self.llm = ChatOpenAI(temperature=0, model="gpt-4o", timeout=10)
         
         # Initialize Vector Store
         self.vector_store = self._load_or_create_vector_store()
         
         self.active_filter_titles = None  # State for "Filter-First"
+        self.pending_ambiguous_query = None # State for ambiguity clarification
 
         # Create Tools
         self.pandas_agent_executor = create_pandas_dataframe_agent(
@@ -259,5 +260,78 @@ class MovieAgent:
             vectorstore.save_local(index_path)
             return vectorstore
 
+    def _check_ambiguity(self, query):
+        """
+        Evaluates the ambiguity of a query using the LLM.
+        Returns a dictionary: {"score": int, "clarification": str}
+        """
+        print(f"[DEBUG] Starting _check_ambiguity for query: '{query}'")
+        try:
+            prompt = f"""
+            You are an ambiguity detector for a movie database agent.
+            Analyze the following user query for ambiguity.
+            
+            Query: "{query}"
+            
+            Determine an "ambiguity_score" between 1 and 100.
+            - 1-20: Very clear (e.g., "What is the rating of The Godfather?", "Who directed Inception?")
+            - 21-89: Some ambiguity but safe to guess (e.g., "Batman movies" -> likely implies any movie with Batman). DEFAULT TO THIS RANGE if you can make a reasonable guess.
+            - 90-100: CRITICAL ambiguity, IMPOSSIBLE to proceed without clarification (e.g., user asks for "the best movie" with absolutely no criteria).
+            
+            If score >= 90, provide a "clarification_question" to ask the user.
+            
+            Return in JSON format:
+            {{
+                "score": <int>,
+                "clarification": "<string>"
+            }}
+            """
+            
+            messages = [
+                {"role": "system", "content": "You are a helpful assistant that detects ambiguity in queries."},
+                {"role": "user", "content": prompt}
+            ]
+            
+            print("[DEBUG] Invoking LLM for ambiguity...")
+            response = self.llm.invoke(messages)
+            print("[DEBUG] LLM response received.")
+            content = response.content.strip()
+            
+            import json
+            # Extract JSON from response
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0]
+                
+            result = json.loads(content)
+            print(f"[Ambiguity Analysis] Query: '{query}' | Score: {result.get('score')} | Clarification: '{result.get('clarification')}'")
+            return result
+        except Exception as e:
+            print(f"[ERROR] Ambiguity check failed: {e}")
+            # Fallback if detection fails: assume no ambiguity
+            return {"score": 0, "clarification": ""}
+
     def run(self, query):
+        print(f"[DEBUG] agent.run called with: '{query}'")
+        # 1. Check if we are waiting for a clarification response
+        if self.pending_ambiguous_query:
+            print("[DEBUG] Handling pending ambiguous query response.")
+            # The current 'query' is the user's answer to our clarification question
+            combined_query = f"User asked: '{self.pending_ambiguous_query}'. When asked for clarification, they replied: '{query}'. Answer the original question with this new context."
+            # Reset state
+            self.pending_ambiguous_query = None
+            # Proceed with the combined query
+            return self.master_agent.run(combined_query)
+            
+        # 2. Check for ambiguity on new queries
+        ambiguity_result = self._check_ambiguity(query)
+        
+        if ambiguity_result.get("score", 0) >= 90:
+            self.pending_ambiguous_query = query
+            clarification = ambiguity_result.get("clarification", "Could you please clarify your request?")
+            # Remove potential code block formatting and escape dollar signs (Streamlit treats $ as math)
+            return clarification.replace("`", "").replace("$", "\\$")
+            
+        # 3. Normal execution
         return self.master_agent.run(query)
