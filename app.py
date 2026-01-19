@@ -82,6 +82,13 @@ if audio_value:
                 response_audio.stream_to_file("output.mp3")
                 st.audio("output.mp3", autoplay=True)
                 
+                # Suggestions
+                with st.spinner("Finding similar movies..."):
+                    suggestions = st.session_state.agent.get_suggestions(response)
+                    if suggestions:
+                        st.markdown(suggestions)
+                        st.session_state.messages.append({"role": "assistant", "content": suggestions})
+                
     except Exception as e:
         st.error(f"Error processing audio: {e}")
 
@@ -97,5 +104,12 @@ if prompt := st.chat_input("Or type your question here"):
                 response = st.session_state.agent.run(prompt)
                 st.markdown(response)
                 st.session_state.messages.append({"role": "assistant", "content": response})
+
+                # Suggestions
+                with st.spinner("Finding similar movies..."):
+                    suggestions = st.session_state.agent.get_suggestions(response)
+                    if suggestions:
+                        st.markdown(suggestions)
+                        st.session_state.messages.append({"role": "assistant", "content": suggestions})
             except Exception as e:
                 st.error(f"Error: {e}")

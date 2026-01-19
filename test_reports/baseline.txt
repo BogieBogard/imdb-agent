@@ -2,11 +2,12 @@
 platform darwin -- Python 3.13.2, pytest-9.0.2, pluggy-1.6.0
 rootdir: /Users/matthewbogard/Documents/GitHub/imdb-agent
 plugins: anyio-4.12.1
-collected 14 items
+collected 16 items
 
-tests/test_ambiguity.py ....                                             [ 28%]
-tests/test_deterministic.py .....                                        [ 64%]
-tests/test_semantic.py .....                                             [100%]
+tests/test_ambiguity.py ....                                             [ 25%]
+tests/test_deterministic.py .....                                        [ 56%]
+tests/test_semantic.py .....                                             [ 87%]
+tests/test_suggestions.py ..                                             [100%]
 
 =============================== warnings summary ===============================
 tests/test_deterministic.py::test_question_1_matrix_release
@@ -28,4 +29,4 @@ tests/test_deterministic.py::test_question_1_matrix_release
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 - generated xml file: /Users/matthewbogard/Documents/GitHub/imdb-agent/test_reports/current.xml -
-================== 14 passed, 5 warnings in 106.11s (0:01:46) ==================
+================== 16 passed, 5 warnings in 110.98s (0:01:50) ==================

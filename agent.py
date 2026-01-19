@@ -335,3 +335,92 @@ class MovieAgent:
             
         # 3. Normal execution
         return self.master_agent.run(query)
+
+    def _extract_movies_from_text(self, text):
+        """
+        Uses LLM to identify movie titles mentioned in a text response.
+        """
+        try:
+            prompt = f"""
+            Identify the exact movie titles mentioned in the following text.
+            Text: "{text}"
+            
+            Return ONLY a JSON list of strings. Example: ["The Godfather", "Inception"]
+            If no movies are mentioned, return [].
+            """
+            from langchain.schema import HumanMessage
+            response = self.llm.invoke([HumanMessage(content=prompt)])
+            
+            content = response.content.strip()
+            import json
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0]
+                
+            titles = json.loads(content)
+            return titles if isinstance(titles, list) else []
+        except Exception as e:
+            print(f"[ERROR] Failed to extract movies: {e}")
+            return []
+
+    def _find_similar_movies(self, titles):
+        """
+        Finds movies with similar Meta_score and IMDB_Rating.
+        """
+        if not titles:
+            return []
+            
+        suggestions = []
+        seen_titles = set(titles) # Don't recommend the same movies
+        
+        # Get stats for the mentioned movies
+        target_movies = self.df[self.df['Series_Title'].isin(titles)]
+        
+        if target_movies.empty:
+            return []
+
+        avg_meta = target_movies['Meta_score'].mean()
+        avg_imdb = target_movies['IMDB_Rating'].mean()
+        
+        # Define similarity range
+        meta_margin = 10
+        imdb_margin = 1.0
+        
+        # Filter for similar movies
+        candidate_mask = (
+            (self.df['Meta_score'].between(avg_meta - meta_margin, avg_meta + meta_margin)) &
+            (self.df['IMDB_Rating'].between(avg_imdb - imdb_margin, avg_imdb + imdb_margin))
+        )
+        
+        candidates = self.df[candidate_mask].sort_values('IMDB_Rating', ascending=False)
+        
+        for _, row in candidates.iterrows():
+            if row['Series_Title'] not in seen_titles:
+                suggestions.append(f"**{row['Series_Title']}** (IMDB: {row['IMDB_Rating']}, Meta: {row['Meta_score']})")
+                seen_titles.add(row['Series_Title'])
+                
+            if len(suggestions) >= 3:
+                break
+                
+        return suggestions
+
+    def get_suggestions(self, response_text):
+        """
+        Public method to generate suggestions based on the last response.
+        """
+        try:
+            titles = self._extract_movies_from_text(response_text)
+            if not titles:
+                return None
+                
+            similar_movies = self._find_similar_movies(titles)
+            
+            if not similar_movies:
+                return None
+                
+            return "### 🎥 You might also like:\n" + "\n".join([f"- {s}" for s in similar_movies])
+        except Exception as e:
+            print(f"[ERROR] Suggestion generation failed: {e}")
+            return None
+
