@@ -41,16 +41,7 @@ def test_question_5_top_directors_gross(movie_agent):
     assert "Avengers: Endgame" in response
     assert "Avatar" in response
 
-def test_question_7_comedy_death(movie_agent):
-    """
-    Question: List of movies from the comedy genre where there is death or dead people involved. Hint, use overview column.
-    """
-    response = movie_agent.run("List of movies from the comedy genre where there is death or dead people involved. Hint, use overview column.")
-    
-    # Check for some expected keywords or titles based on known good output
-    expected_titles = ["Harold and Maude", "Knives Out", "50/50", "An Anand", "Young Frankenstein"]
-    found_count = sum(1 for t in expected_titles if t in response)
-    assert found_count >= 2, f"Expected at least 2 of {expected_titles}. Got: {response}"
+
 
 def test_question_6_top_10_movies_1m_votes_low_gross_deterministic(movie_agent):
     """

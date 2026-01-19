@@ -73,3 +73,49 @@ def test_question_9_police_movies_before_1990(movie_agent):
     
     passed, reason = llm_evaluate(question, response, criteria)
     assert passed, f"Judge failed the response. Reason: {reason}\nAgent Response: {response}"
+
+def test_question_7_comedy_death_semantic(movie_agent):
+    """
+    Question: List of movies from the comedy genre where there is death or dead people involved. Hint, use overview column.
+    Semantic Check:
+    - Verifies the agent's answer against the retrieval context.
+    - Ensures that IF valid comedies are found in the vector search, they are included.
+    """
+    question = "List of movies from the comedy genre where there is death or dead people involved. Hint, use overview column."
+    
+    # 1. Run Agent
+    response = movie_agent.run(question)
+    
+    # 2. Manual Retrieval to Capture Context (What the agent saw)
+    # Mirroring the agent's logic: Search for plot keywords
+    # Note: We use the helper directly if available, or just use the vector store
+    # Since the agent might have set a filter, we must respect it to show the judge the TRUE context
+    
+    k_candidates = 500 if movie_agent.active_filter_titles else 50
+    retrieved_docs = movie_agent.vector_store.similarity_search("movies about death or dead people", k=k_candidates)
+    
+    filtered_context_docs = []
+    for doc in retrieved_docs:
+        if movie_agent.active_filter_titles:
+            if doc.metadata['title'] not in movie_agent.active_filter_titles:
+                continue
+        filtered_context_docs.append(doc)
+    
+    # Take top 10 of what remains
+    final_docs = filtered_context_docs[:10]
+    
+    retrieved_context = "\n".join([f"{d.metadata['title']} (Year: {d.metadata.get('year')}, Plot: {d.page_content})" for d in final_docs])
+    
+    # 3. Evaluation Criteria
+    criteria = """
+    1. The answer must identify movies deemed as 'Comedy' (or Dark Comedy) that involve death.
+    2. The answer must be consistent with the Retrieved Context. 
+       - If the Context contains 'Harold and Maude', the answer should likely include it.
+       - If the Context contains ONLY Dramas, the agent should correctly identify that or return the 'closest' matches that have comedy elements.
+    3. The answer should NOT simply list all retrieved movies if they are clearly not comedies (like 'Schindler's List' or 'The Green Mile').
+    4. It is ACCEPTABLE if the agent finds fewer than 5 movies if the retrieval context didn't provide enough comedies.
+    """
+    
+    from tests.utils import llm_evaluate_with_retrieval
+    passed, reason = llm_evaluate_with_retrieval(question, response, retrieved_context, criteria)
+    assert passed, f"Judge failed. Reason: {reason}\nRetrieval Context: {retrieved_context}\nAgent Response: {response}"

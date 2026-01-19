@@ -43,6 +43,8 @@ class MovieAgent:
         # Initialize Vector Store
         self.vector_store = self._load_or_create_vector_store()
         
+        self.active_filter_titles = None  # State for "Filter-First"
+
         # Create Tools
         self.pandas_agent_executor = create_pandas_dataframe_agent(
             self.llm,
@@ -54,14 +56,19 @@ class MovieAgent:
         
         self.tools = [
             Tool(
+                name="DatasetFilter",
+                func=self._run_dataset_filter,
+                description="Useful for narrowing down the search scope *before* performing a plot search (e.g., 'Filter to Comedy movies only'). This tool filters the dataset and saves the filtered context for subsequent PlotSearch calls. Input should be the filtering criteria."
+            ),
+            Tool(
                 name="DataAnalyst",
                 func=self._run_pandas_agent,
-                description="Useful for questions involving sorting, filtering, counting, math, averages, or structured data queries (e.g., 'Top 5 movies by rating', 'Movies released after 2010'). Input should be the full natural language query."
+                description="Useful for questions involving sorting, counting, math, averages, or structured data queries (e.g., 'Top 5 movies by rating', 'Movies released after 2010'). Input should be the full natural language query."
             ),
             Tool(
                 name="PlotSearch",
                 func=self._vector_search,
-                description="Useful for finding movies based on plot descriptions, themes, or keywords (e.g., 'Movies about death', 'Alien invasion plots'). NOTE: This tool DOES NOT filter by release year, rating, or other structured data. For queries involving dates/ratings AND plot/theme, use DataAnalyst to filter first or filter the results of this search using DataAnalyst."
+                description="Useful for finding movies based on plot descriptions, themes, or keywords (e.g., 'Movies about death', 'Alien invasion plots'). NOTE: This tool uses the filtered context set by DatasetFilter if available."
             )
         ]
         
@@ -78,6 +85,62 @@ class MovieAgent:
             return self.pandas_agent_executor.invoke(query)
         except Exception as e:
             return f"Error running pandas analysis: {str(e)}"
+            
+    def _run_dataset_filter(self, query):
+        """
+        Generates a pandas boolean mask from the query, applies it, 
+        and saves the resulting titles to self.active_filter_titles.
+        """
+        try:
+            # Prompt to get the boolean mask expression
+            prompt = f"""
+            You are a pandas expert. 
+            DataFrame `df` has columns: {list(self.df.columns)}.
+            
+            Write a Python pandas filtering expression/mask to select/filter data based on: "{query}".
+            Return ONLY the expression. Do not assign it to a variable.
+            
+            CRITICAL RULES:
+            1. Use bitwise operators `&` (AND) and `|` (OR) for multiple conditions.
+            2. WRAP EACH CONDITION IN PARENTHESES. Example: `(df['A'] > 1) & (df['B'] == 2)`
+            3. Use `.str.contains()` for text search with `case=False, na=False`.
+            
+            Examples:
+            Query: "Comedy movies" -> df['Genre'].str.contains('Comedy', case=False, na=False)
+            Query: "Movies after 2000" -> df['Released_Year'] > 2000
+            Query: "Rating > 8" -> df['IMDB_Rating'] > 8.0
+            Query: "Steven Spielberg sci-fi movies" -> (df['Director'] == 'Steven Spielberg') & (df['Genre'].str.contains('Sci-Fi', case=False, na=False))
+            Query: "Action movies with rating > 7.5" -> (df['Genre'].str.contains('Action', case=False, na=False)) & (df['IMDB_Rating'] > 7.5)
+            """
+            
+            from langchain.schema import HumanMessage
+            response = self.llm.invoke([HumanMessage(content=prompt)])
+            
+            expression = response.content.strip().strip('`').replace('python', '').strip()
+            
+            # Safety / Sandbox check could go here, but allow_dangerous_code is set on the other agent anyway.
+            # We assume the LLM produces a valid pandas mask.
+            
+            # Validating that the expression starts with df
+            if not expression.startswith("df") and not expression.startswith("(df"):
+                return "Failed to generate a valid filtering expression."
+                
+            # Execute
+            # strict context with only 'df'
+            local_scope = {'df': self.df}
+            mask = eval(expression, {"__builtins__": None}, local_scope)
+            
+            filtered_df = self.df[mask]
+            
+            if filtered_df.empty:
+                return "The filter resulted in 0 movies. Please relax the criteria."
+                
+            self.active_filter_titles = set(filtered_df['Series_Title'].tolist())
+            
+            return f"Filter applied successfully. {len(self.active_filter_titles)} movies selected. Context set for PlotSearch."
+            
+        except Exception as e:
+            return f"Error applying filter: {str(e)}"
 
     def _extract_year_constraints(self, query):
         """
@@ -124,30 +187,45 @@ class MovieAgent:
             # 1. Extract constraints
             constraint = self._extract_year_constraints(query)
             
-            # 2. Fetch candidates (fetch many to allow for filtering)
-            k_candidates = 50
+            # 2. Determine Scope & Candidates
+            # If we have an active filter, we broaden the search to find hits WITHIN the filter
+            if self.active_filter_titles:
+                 k_candidates = 500  # Broad net
+            else:
+                 k_candidates = 50   # Standard net
+            
             docs = self.vector_store.similarity_search(query, k=k_candidates)
             
             # 3. Filter results
             filtered_docs = []
             for doc in docs:
                 movie_year = doc.metadata.get('year')
-                if not movie_year: # Include if year key missing (safety) or keep? Let's drop if invalid.
+                movie_title = doc.metadata.get('title')
+                
+                if not movie_year: 
                     continue
                     
                 keep = True
-                c_type = constraint.get('type')
-                c_year = constraint.get('year')
-                c_end = constraint.get('year_end')
                 
-                if c_type == 'before' and c_year:
-                    if not (movie_year < c_year): keep = False
-                elif c_type == 'after' and c_year:
-                    if not (movie_year > c_year): keep = False
-                elif c_type == 'exact' and c_year:
-                    if not (movie_year == c_year): keep = False
-                elif c_type == 'range' and c_year and c_end:
-                    if not (c_year <= movie_year <= c_end): keep = False
+                # Apply Active Filter
+                if self.active_filter_titles:
+                    if movie_title not in self.active_filter_titles:
+                        keep = False
+                
+                # Apply Extracted Constraints (Year)
+                if keep:
+                    c_type = constraint.get('type')
+                    c_year = constraint.get('year')
+                    c_end = constraint.get('year_end')
+                    
+                    if c_type == 'before' and c_year:
+                        if not (movie_year < c_year): keep = False
+                    elif c_type == 'after' and c_year:
+                        if not (movie_year > c_year): keep = False
+                    elif c_type == 'exact' and c_year:
+                        if not (movie_year == c_year): keep = False
+                    elif c_type == 'range' and c_year and c_end:
+                        if not (c_year <= movie_year <= c_end): keep = False
                 
                 if keep:
                     filtered_docs.append(doc)
@@ -156,7 +234,7 @@ class MovieAgent:
             final_docs = filtered_docs[:5]
             
             if not final_docs:
-                return "No movies found matching the plot and year criteria."
+                return "No movies found matching the plot and criteria."
                 
             return "\n\n".join([f"Title: {d.metadata['title']} ({d.metadata['year']})\nPlot: {d.page_content}" for d in final_docs])
             
