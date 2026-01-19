@@ -26,7 +26,9 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-> **Note:** The testing commands listed below assume you are running them from within this activated virtual environment.
+Enter your OpenAI API key in the browser UI. (The key is not stored or saved.) The app will then load and you can start asking questions.
+
+> **Note:** For running the testing commands listed below, you'll want to add a .env file with your `OPENAI_API_KEY` variable. And the commands' syntax assumes you are running them from within the activated virtual environment.
 
 ## Testing Workflow
 

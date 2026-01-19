@@ -191,7 +191,7 @@ class MovieAgent:
             # 2. Determine Scope & Candidates
             # If we have an active filter, we broaden the search to find hits WITHIN the filter
             if self.active_filter_titles:
-                 k_candidates = 500  # Broad net
+                 k_candidates = 150  # Larger net
             else:
                  k_candidates = 50   # Standard net
             
