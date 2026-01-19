@@ -1,0 +1,33 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.2, pytest-9.0.2, pluggy-1.6.0
+rootdir: /Users/matthewbogard/Documents/GitHub/imdb-agent
+plugins: anyio-4.12.1
+collected 10 items
+
+tests/test_deterministic.py .....                                        [ 50%]
+tests/test_semantic.py .....                                             [100%]
+
+=============================== warnings summary ===============================
+tests/test_deterministic.py::test_question_1_matrix_release
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+tests/test_deterministic.py::test_question_1_matrix_release
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+tests/test_deterministic.py::test_question_1_matrix_release
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+
+tests/test_deterministic.py::test_question_1_matrix_release
+  /Users/matthewbogard/Documents/GitHub/imdb-agent/agent.py:75: LangChainDeprecationWarning: The function `initialize_agent` was deprecated in LangChain 0.1.0 and will be removed in 1.0. Use Use new agent constructor methods like create_react_agent, create_json_agent, create_structured_chat_agent, etc. instead.
+    self.master_agent = initialize_agent(
+
+tests/test_deterministic.py::test_question_1_matrix_release
+  /Users/matthewbogard/Documents/GitHub/imdb-agent/agent.py:263: LangChainDeprecationWarning: The method `Chain.run` was deprecated in langchain 0.1.0 and will be removed in 1.0. Use invoke instead.
+    return self.master_agent.run(query)
+
+tests/test_deterministic.py::test_question_5_top_directors_gross
+  <string>:1: FutureWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /Users/matthewbogard/Documents/GitHub/imdb-agent/test_reports/current.xml -
+================== 10 passed, 6 warnings in 76.79s (0:01:16) ===================

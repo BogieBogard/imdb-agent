@@ -9,17 +9,32 @@ from datetime import datetime
 # Add project root to sys.path so tests can import from 'agent.py'
 sys.path.append(os.getcwd())
 
+import subprocess
+
 # Configuration
 REPORT_DIR = "test_reports"
 BASELINE_FILE = os.path.join(REPORT_DIR, "baseline.xml")
 CURRENT_FILE = os.path.join(REPORT_DIR, "current.xml")
+BASELINE_TXT = os.path.join(REPORT_DIR, "baseline.txt")
+CURRENT_TXT = os.path.join(REPORT_DIR, "current.txt")
+COMPARISON_TXT = os.path.join(REPORT_DIR, "comparison_report.txt")
 
-def run_tests(output_file):
-    """Runs pytest and outputs to the specified XML file."""
-    print(f"Running tests and saving report to {output_file}...")
-    # Using sys.executable to ensure we use the same python environment
-    retcode = pytest.main(["tests/", f"--junitxml={output_file}"])
-    return retcode
+def run_tests(xml_file, txt_file):
+    """Runs pytest and outputs to the specified XML and TXT files."""
+    print(f"Running tests...")
+    print(f"  - XML report: {xml_file}")
+    print(f"  - Text output: {txt_file}")
+    
+    # cmd = [sys.executable, "-m", "pytest", "tests/", f"--junitxml={xml_file}"]
+    # Using 'pytest' directly or via sys.executable if installed in env
+    cmd = [sys.executable, "-m", "pytest", "tests/", f"--junitxml={xml_file}"]
+
+    with open(txt_file, "w") as f:
+        # Capture both stdout and stderr to the file
+        result = subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, text=True)
+    
+    print(f"Tests completed with exit code: {result.returncode}")
+    return result.returncode
 
 def parse_junit_xml(xml_file):
     """Parses JUnit XML to a dictionary {test_name: status}."""
@@ -47,8 +62,8 @@ def parse_junit_xml(xml_file):
         
     return results
 
-def compare_results(baseline_results, current_results):
-    """Compares baseline and current results and prints a table."""
+def compare_results(baseline_results, current_results, report_file=None):
+    """Compares baseline and current results, prints a table, and optionally saves to file."""
     all_tests = set(baseline_results.keys()) | set(current_results.keys())
     
     table_data = []
@@ -62,7 +77,6 @@ def compare_results(baseline_results, current_results):
         curr = current_results.get(test, "N/A")
         
         status = "STABLE"
-        color = "" # Plain text for now
         
         if base == "PASS" and curr in ["FAIL", "ERROR"]:
             status = "REGRESSION"
@@ -79,20 +93,35 @@ def compare_results(baseline_results, current_results):
             
         table_data.append([test, base, curr, status])
 
-    print("\n" + "="*60)
-    print(f"TEST COMPARISON REPORT - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("="*60)
-    print(tabulate(table_data, headers=headers, tablefmt="grid"))
-    print("\nSummary:")
-    print(f"Total Tests: {len(all_tests)}")
-    print(f"Regressions: {regressions}")
-    print(f"Fixes:       {fixes}")
+    # Build the report string
+    report_lines = []
+    report_lines.append("="*60)
+    report_lines.append(f"TEST COMPARISON REPORT - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    report_lines.append("="*60)
+    report_lines.append(tabulate(table_data, headers=headers, tablefmt="grid"))
+    report_lines.append("\nSummary:")
+    report_lines.append(f"Total Tests: {len(all_tests)}")
+    report_lines.append(f"Regressions: {regressions}")
+    report_lines.append(f"Fixes:       {fixes}")
     
     if regressions > 0:
-        print("\n*** WARNING: REGRESSIONS DETECTED ***")
-        sys.exit(1)
+        report_lines.append("\n*** WARNING: REGRESSIONS DETECTED ***")
     else:
-        print("\nTest run clean (no regressions against baseline).")
+        report_lines.append("\nTest run clean (no regressions against baseline).")
+        
+    full_report = "\n".join(report_lines)
+    
+    # Print to console
+    print("\n" + full_report)
+    
+    # Save to file if requested
+    if report_file:
+        with open(report_file, "w") as f:
+            f.write(full_report)
+        print(f"\nComparison report saved to {report_file}")
+
+    if regressions > 0:
+        sys.exit(1)
 
 def main():
     parser = argparse.ArgumentParser(description="Manage test baselines and runs.")
@@ -104,11 +133,11 @@ def main():
 
     if args.baseline:
         print("Generating new baseline...")
-        run_tests(BASELINE_FILE)
-        print(f"Baseline saved to {BASELINE_FILE}")
+        run_tests(BASELINE_FILE, BASELINE_TXT)
+        print(f"Baseline saved to {BASELINE_FILE} and {BASELINE_TXT}")
     else:
         # Run current tests
-        run_tests(CURRENT_FILE)
+        run_tests(CURRENT_FILE, CURRENT_TXT)
         
         # Load and compare
         if not os.path.exists(BASELINE_FILE):
@@ -118,7 +147,7 @@ def main():
         base_res = parse_junit_xml(BASELINE_FILE)
         curr_res = parse_junit_xml(CURRENT_FILE)
         
-        compare_results(base_res, curr_res)
+        compare_results(base_res, curr_res, report_file=COMPARISON_TXT)
 
 if __name__ == "__main__":
     main()
