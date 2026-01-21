@@ -155,7 +155,16 @@ if audio_value:
                     with st.spinner("Generating Speech (Microsoft SpeechT5)..."):
                         tts_pipe, speaker_emb = load_tts_model()
                         if speaker_emb is not None:
-                            speech = tts_pipe(response, forward_params={"speaker_embeddings": speaker_emb})
+                            # SpeechT5 has a 600 token limit (approx 300-400 words). 
+                            # We'll truncate strictly to avoid crashes on long agent responses.
+                            # A better long-term fix would be to chunk the text.
+                            full_text = response
+                            if len(full_text) > 400:
+                                speech_text = full_text[:400] + "... (truncated for voice)"
+                            else:
+                                speech_text = full_text
+                                
+                            speech = tts_pipe(speech_text, forward_params={"speaker_embeddings": speaker_emb})
                             
                             # Validating sample rate
                             sample_rate = speech["sampling_rate"]
