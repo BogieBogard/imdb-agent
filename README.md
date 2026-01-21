@@ -26,9 +26,14 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Enter your OpenAI API key in the browser UI. (The key is not stored or saved.) The app will then load and you can start asking questions.
+### 3. Run the Application
+```bash
+streamlit run app.py
+```
 
-> **Note:** For running the testing commands listed below, you'll want to add a .env file with your `OPENAI_API_KEY` variable. And the commands' syntax assumes you are running them from within the activated virtual environment.
+The app will automatically connect to your local Ollama instance (using `gemma3:12b` and `qwen3-embedding:latest`). No API key is required.
+
+> **Note:** Ensure Ollama is running (`ollama serve`).
 
 ## Testing Workflow
 
@@ -67,7 +72,7 @@ python -m pytest tests/test_ambiguity.py::TestAmbiguityModule::test_high_ambigui
 
 ### 1. Agent Design
 -   **Type**: Zero-Shot React Description (`AgentType.ZERO_SHOT_REACT_DESCRIPTION`).
--   **Model**: `gpt-4o` (OpenAI).
+-   **Model**: `gemma3:12b` (Ollama).
 -   **State Management**: 
     -   **Filtered Context** (`self.active_filter_titles`): Narrows down the search universe (e.g., "Only Comedy Movies").
     -   **Ambiguity State** (`self.pending_ambiguous_query`): Tracks pending queries that require user clarification.

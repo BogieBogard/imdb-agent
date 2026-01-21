@@ -18,7 +18,7 @@ class TestAmbiguityModule:
         # Let's mock the valid init process to avoid overhead:
         with patch.dict('os.environ', {'OPENAI_API_KEY': 'fake-key'}):
             with patch('agent.pd.read_csv') as mock_read_csv:
-                with patch('agent.OpenAIEmbeddings'):
+                with patch('agent.OllamaEmbeddings'):
                     with patch('agent.FAISS'):
                         with patch('agent.initialize_agent'):
                             with patch('agent.create_pandas_dataframe_agent'):

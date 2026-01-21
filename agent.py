@@ -1,6 +1,7 @@
 import os
 import pandas as pd
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_community.chat_models import ChatOllama
+from langchain_community.embeddings import OllamaEmbeddings
 from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
 from langchain.agents import initialize_agent, AgentType
 from langchain.tools import Tool
@@ -9,7 +10,7 @@ from langchain_community.vectorstores import FAISS
 class MovieAgent:
     def __init__(self, api_key):
         self.api_key = api_key
-        os.environ["OPENAI_API_KEY"] = api_key
+        # os.environ["OPENAI_API_KEY"] = api_key # Not needed for Ollama
         
         # Load Data
         # Using a valid path assuming execution from repo root
@@ -38,7 +39,7 @@ class MovieAgent:
         pd.set_option('display.max_colwidth', None)
         
         # Initialize LLM
-        self.llm = ChatOpenAI(temperature=0, model="gpt-4o", timeout=10)
+        self.llm = ChatOllama(temperature=0, model="gemma3:12b")
         
         # Initialize Vector Store
         self.vector_store = self._load_or_create_vector_store()
@@ -52,7 +53,9 @@ class MovieAgent:
             self.df,
             verbose=True,
             allow_dangerous_code=True,
-            agent_type="openai-tools"
+            # agent_type="tool-calling" failed with NotImplemnetedError for ChatOllama in this version.
+            # Switching to generic zero-shot ReAct.
+            agent_type="zero-shot-react-description"
         )
         
         self.tools = [
@@ -243,8 +246,8 @@ class MovieAgent:
             return f"Error searching plots: {str(e)}"
 
     def _load_or_create_vector_store(self):
-        embeddings = OpenAIEmbeddings()
-        index_path = "faiss_index"
+        embeddings = OllamaEmbeddings(model="qwen3-embedding:latest")
+        index_path = "faiss_index_qwen_latest"
         
         if os.path.exists(index_path):
             return FAISS.load_local(index_path, embeddings, allow_dangerous_deserialization=True)
