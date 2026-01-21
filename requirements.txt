@@ -16,5 +16,7 @@ datasets
 sentencepiece
 soundfile
 huggingface_hub
-speechbrain
+kokoro>=0.3.4
+phonemizer
 pydub
+loguru

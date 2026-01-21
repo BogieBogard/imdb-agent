@@ -45,19 +45,19 @@ def load_stt_model():
 
 @st.cache_resource
 def load_tts_model():
+    # Upgrade to Kokoro-82M (High quality, local, fast)
+    from kokoro import KPipeline
+    import torch
+    
     device = "mps" if torch.backends.mps.is_available() else "cpu"
-    # Using Microsoft SpeechT5
-    synthesiser = pipeline("text-to-speech", model="microsoft/speecht5_tts", device=device)
-    # Load a default speaker embedding for SpeechT5
-    try:
-        # Load local secure embedding
-        # embeddings_dataset = load_dataset("Matthijs/cmu-arctic-xvectors", split="validation", trust_remote_code=True)
-        # speaker_embedding = torch.tensor(embeddings_dataset[7306]["xvector"]).unsqueeze(0)
-        speaker_embedding = torch.load("speaker_embedding.pt", map_location=device)
-    except Exception as e:
-        st.error(f"Failed to load speaker embeddings: {e}")
-        speaker_embedding = None
-    return synthesiser, speaker_embedding
+    # 'a' = American English
+    pipeline = KPipeline(lang_code='a', device=device)
+    
+    # We return the pipeline and a default voice style
+    # 'am_michael' is a good generic American Male voice included in Kokoro
+    # 'af_sarah' is a good generic American Female voice
+    # 'af_heart' is the highest rated voice (Grade A) in VOICES.md
+    return pipeline, "af_heart"
 
 # Sidebar
 
@@ -150,32 +150,42 @@ if audio_value:
                 st.markdown(response)
                 st.session_state.messages.append({"role": "assistant", "content": response})
                 
-                # TTS using SpeechT5
+                # TTS using Kokoro-82M
                 try:
-                    with st.spinner("Generating Speech (Microsoft SpeechT5)..."):
-                        tts_pipe, speaker_emb = load_tts_model()
-                        if speaker_emb is not None:
-                            # SpeechT5 has a 600 token limit (approx 300-400 words). 
-                            # We'll truncate strictly to avoid crashes on long agent responses.
-                            # A better long-term fix would be to chunk the text.
-                            full_text = response
-                            if len(full_text) > 400:
-                                speech_text = full_text[:400] + "... (truncated for voice)"
-                            else:
-                                speech_text = full_text
-                                
-                            speech = tts_pipe(speech_text, forward_params={"speaker_embeddings": speaker_emb})
+                    with st.spinner("Generating Speech (Kokoro-82M)..."):
+                        tts_pipeline, voice_style = load_tts_model()
+                        
+                        # Kokoro is a generator, it yields audio chunks.
+                        # We need to collect them to play the full audio.
+                        # Using the generator allows for streaming if we wanted, but for now we'll stitch.
+                        generator = tts_pipeline(
+                            response, 
+                            voice=voice_style,
+                            speed=1, 
+                            split_pattern=r'\n+'
+                        )
+                        
+                        all_audio = []
+                        for _, _, audio_chunk in generator:
+                            all_audio.append(audio_chunk)
                             
-                            # Validating sample rate
-                            sample_rate = speech["sampling_rate"]
-                            audio_data = speech["audio"]
+                        if all_audio:
+                            import numpy as np
+                            # Concatenate all chunks
+                            complete_audio = np.concatenate(all_audio)
+                            
+                            # Validating sample rate (Kokoro defaults to 24000)
+                            sample_rate = 24000
                             
                             # Save to temp file for st.audio
                             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_out:
-                                sf.write(tmp_out.name, audio_data.T, sample_rate)
+                                sf.write(tmp_out.name, complete_audio, sample_rate)
                                 output_audio_path = tmp_out.name
                                 
                             st.audio(output_audio_path, autoplay=True)
+                        else:
+                            st.warning("TTS generated no audio.")
+                            
                 except Exception as e:
                     st.error(f"TTS Error: {e}")
                 
