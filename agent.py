@@ -3,7 +3,8 @@ import pandas as pd
 from langchain_community.chat_models import ChatOllama
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
-from langchain.agents import initialize_agent, AgentType
+from langchain.agents import AgentExecutor, create_react_agent
+from langchain_core.prompts import PromptTemplate
 from langchain.tools import Tool
 from langchain_community.vectorstores import FAISS
 
@@ -77,10 +78,41 @@ class MovieAgent:
             )
         ]
         
-        self.master_agent = initialize_agent(
-            self.tools,
-            self.llm,
-            agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+        # Create ReAct prompt template
+        react_prompt = PromptTemplate.from_template(
+            """Answer the following questions as best you can. You have access to the following tools:
+
+{tools}
+
+Use the following format:
+
+Question: {input}
+Thought: you should always think about what to do
+Action: one of [{tool_names}]
+Action Input: the input to the action
+Observation: the result of the action
+... (Thought/Action/Action Input/Observation can repeat)
+Thought: I now know the final answer
+Final Answer: the final answer
+
+Begin!
+
+Question: {input}
+Thought:{agent_scratchpad}
+"""
+        )
+        
+        # Create the agent using the new API
+        agent = create_react_agent(
+            llm=self.llm,
+            tools=self.tools,
+            prompt=react_prompt
+        )
+        
+        # Wrap in AgentExecutor
+        self.master_agent = AgentExecutor(
+            agent=agent,
+            tools=self.tools,
             verbose=True,
             handle_parsing_errors=True
         )
@@ -326,7 +358,8 @@ class MovieAgent:
             # Reset state
             self.pending_ambiguous_query = None
             # Proceed with the combined query
-            return self.master_agent.run(combined_query)
+            result = self.master_agent.invoke({"input": combined_query})
+            return result["output"]
             
         # 2. Check for ambiguity on new queries
         ambiguity_result = self._check_ambiguity(query)
@@ -338,7 +371,8 @@ class MovieAgent:
             return clarification.replace("`", "").replace("$", "\\$")
             
         # 3. Normal execution
-        return self.master_agent.run(query)
+        result = self.master_agent.invoke({"input": query})
+        return result["output"]
 
     def _extract_movies_from_text(self, text):
         """

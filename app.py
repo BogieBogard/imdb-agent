@@ -1,8 +1,19 @@
 import streamlit as st
 import os
+import warnings
 from agent import MovieAgent
 # import langchain
 # langchain.debug = True
+
+# Suppress known warnings from third-party libraries (Kokoro TTS, PyTorch, Transformers)
+# These are internal library warnings that don't affect functionality
+warnings.filterwarnings("ignore", category=UserWarning, module="torch.nn.modules.rnn")
+warnings.filterwarnings("ignore", category=FutureWarning, module="torch.nn.utils.weight_norm")
+warnings.filterwarnings("ignore", category=UserWarning, module="torch.functional")
+warnings.filterwarnings("ignore", category=UserWarning, module="kokoro.istftnet")
+# Suppress transformers deprecation warnings (will be fixed in transformers v5)
+warnings.filterwarnings("ignore", message=".*return_token_timestamps.*", category=FutureWarning)
+warnings.filterwarnings("ignore", message=".*forced_decoder_ids.*", category=FutureWarning)
 
 st.set_page_config(page_title="IMDB Voice Agent", page_icon="🎬")
 
@@ -11,7 +22,6 @@ st.markdown("Ask questions about the top 1000 movies! You can ask about **plots*
 
 import torch
 import numpy as np
-from transformers import pipeline
 # from datasets import load_dataset (Removed for security)
 import soundfile as sf
 import tempfile
@@ -39,6 +49,8 @@ if "messages" not in st.session_state:
 
 @st.cache_resource
 def load_stt_model():
+    # Import here to avoid Streamlit caching issues
+    from transformers import pipeline
     # Using OpenAI Whisper Base English (smaller, faster, less prone to hallucination on short audio)
     # Forced to CPU for debugging stability
     return pipeline("automatic-speech-recognition", model="openai/whisper-base.en", device="cpu")
