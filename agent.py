@@ -34,9 +34,10 @@ class MovieAgent:
         
         # --- Pandas Display Options ---
         # Prevent truncation that causes hallucinations
-        pd.set_option('display.max_columns', None)
-        pd.set_option('display.max_rows', None)
-        pd.set_option('display.max_colwidth', None)
+        # For local models, we can't set the max limit to None. Local models can't handle large dataframes.
+        # pd.set_option('display.max_columns', None)
+        # pd.set_option('display.max_rows', None)
+        # pd.set_option('display.max_colwidth', None)
         
         # Initialize LLM
         self.llm = ChatOllama(temperature=0, model="gemma3:12b")
@@ -86,7 +87,7 @@ class MovieAgent:
 
     def _run_pandas_agent(self, query):
         try:
-            return self.pandas_agent_executor.invoke(query)
+            return self.pandas_agent_executor.invoke(f"{query} Answer in a full sentence.")
         except Exception as e:
             return f"Error running pandas analysis: {str(e)}"
             

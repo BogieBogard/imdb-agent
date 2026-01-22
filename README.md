@@ -1,5 +1,18 @@
 # imdb-agent
 
+## Prerequisites
+
+1.  **Install Ollama**: Download and install [Ollama](https://ollama.com/).
+2.  **Pull Required Models**:
+    ```bash
+    ollama pull gemma3:12b
+    ollama pull qwen3-embedding
+    ```
+3.  **Ensure Ollama is Running**:
+    ```bash
+    ollama serve
+    ```
+
 ## Setup & Installation
 
 ### 1. Create a Virtual Environment
@@ -21,7 +34,12 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-### 3. Run the Application
+### 3. Download Local Models (Whisper & SpeechT5)
+```bash
+python scripts/download_models.py
+```
+
+### 4. Run the Application
 ```bash
 streamlit run app.py
 ```

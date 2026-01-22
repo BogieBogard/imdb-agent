@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="16" time="990.275" timestamp="2026-01-21T16:10:26.223681-06:00" hostname="Matthews-MacBook-Pro.local"><testcase classname="tests.test_ambiguity.TestAmbiguityModule" name="test_low_ambiguity_flow" time="0.002" /><testcase classname="tests.test_ambiguity.TestAmbiguityModule" name="test_high_ambiguity_trigger" time="0.001" /><testcase classname="tests.test_ambiguity.TestAmbiguityModule" name="test_clarification_resolution_flow" time="0.001" /><testcase classname="tests.test_ambiguity.TestAmbiguityModule" name="test_check_ambiguity_payload_parsing" time="0.001" /><testcase classname="tests.test_deterministic" name="test_question_1_matrix_release" time="14.714" /><testcase classname="tests.test_deterministic" name="test_question_3_comedy_movies_2010_2020" time="31.376"><failure message="AssertionError: Expected at least 5 of ['Gisaengchung', 'The Intouchables', 'Chhichhore', 'Green Book', 'Three Billboards Outside Ebbing, Missouri', 'Klaus', 'Queen'] to be in response. Got: The top 7 comedy movies by IMDB rating are Gisaengchung (8.6), La vita è bella (8.6), The Intouchables (8.5), Back to the Future (8.5), Modern Times (8.5), City Lights (8.5), and 3 Idiots (8.4).&#10;assert 2 &gt;= 5">movie_agent = &lt;agent.MovieAgent object at 0x11817a780&gt;
+
+    def test_question_3_comedy_movies_2010_2020(movie_agent):
+        """
+        Question: Top 7 comedy movies between 2010-2020 by IMDB rating?
+        """
+        response = movie_agent.run("Top 7 comedy movies between 2010-2020 by IMDB rating?")
+    
+        expected_movies = [
+            "Gisaengchung",
+            "The Intouchables",
+            "Chhichhore",
+            "Green Book",
+            "Three Billboards Outside Ebbing, Missouri",
+            "Klaus",
+            "Queen"
+        ]
+    
+        # Check that at least most expected movies are present
+        found_count = sum(1 for movie in expected_movies if movie in response)
+&gt;       assert found_count &gt;= 5, f"Expected at least 5 of {expected_movies} to be in response. Got: {response}"
+E       AssertionError: Expected at least 5 of ['Gisaengchung', 'The Intouchables', 'Chhichhore', 'Green Book', 'Three Billboards Outside Ebbing, Missouri', 'Klaus', 'Queen'] to be in response. Got: The top 7 comedy movies by IMDB rating are Gisaengchung (8.6), La vita è bella (8.6), The Intouchables (8.5), Back to the Future (8.5), Modern Times (8.5), City Lights (8.5), and 3 Idiots (8.4).
+E       assert 2 &gt;= 5
+
+tests/test_deterministic.py:31: AssertionError</failure></testcase><testcase classname="tests.test_deterministic" name="test_question_5_top_directors_gross" time="188.012" /><testcase classname="tests.test_deterministic" name="test_question_6_top_10_movies_1m_votes_low_gross_deterministic" time="171.490" /><testcase classname="tests.test_deterministic" name="test_question_4_horror_movies_meta_85_imdb_8" time="30.653" /><testcase classname="tests.test_semantic" name="test_question_2_top_5_movies_2019" time="31.520" /><testcase classname="tests.test_semantic" name="test_question_6_top_10_movies_1m_votes_low_gross" time="173.695"><failure message="AssertionError: Judge failed the response. Reason: NO&#10;  &#10;  The answer attempts to list 10 movies, but it incorrectly states the gross earnings threshold as &quot;less than 100000000&quot; (100 million). The question asks for movies with &quot;lower gross earnings&quot; relative to their high vote count, not simply those under a specific gross amount. The answer also explicitly mentions vote counts and gross earnings, fulfilling that part of the criteria. However, the incorrect gross earnings threshold makes the entire list inaccurate and therefore fails to meet the core requirement of the question.&#10;  Agent Response: The top 10 movies with votes greater than 1000000 and gross less than 100000000, sorted by gross in ascending order are: American History X, Léon, Memento, The Shawshank Redemption, Fight Club, Goodfellas, The Prestige, The Godfather: Part II, Kill Bill: Vol. 1, and V for Vendetta.&#10;assert False">movie_agent = &lt;agent.MovieAgent object at 0x11817a780&gt;
+
+    def test_question_6_top_10_movies_1m_votes_low_gross(movie_agent):
+        """
+        Question: Top 10 movies with over 1M votes but lower gross earnings.
+        """
+        question = "Top 10 movies with over 1M votes but lower gross earnings."
+        response = movie_agent.run(question)
+    
+        criteria = """
+        1. The answer should attempt to list 10 movies (or as many as fit criteria if fewer than 10).
+        2. All listed movies must have &gt; 1,000,000 votes.
+        3. "Lower gross earnings" implies lower than average or relatively low for such high votes.
+        4. The list should explicitly mention vote counts and gross earnings.
+        """
+    
+        passed, reason = llm_evaluate(question, response, criteria)
+&gt;       assert passed, f"Judge failed the response. Reason: {reason}\nAgent Response: {response}"
+E       AssertionError: Judge failed the response. Reason: NO
+E         
+E         The answer attempts to list 10 movies, but it incorrectly states the gross earnings threshold as "less than 100000000" (100 million). The question asks for movies with "lower gross earnings" relative to their high vote count, not simply those under a specific gross amount. The answer also explicitly mentions vote counts and gross earnings, fulfilling that part of the criteria. However, the incorrect gross earnings threshold makes the entire list inaccurate and therefore fails to meet the core requirement of the question.
+E         Agent Response: The top 10 movies with votes greater than 1000000 and gross less than 100000000, sorted by gross in ascending order are: American History X, Léon, Memento, The Shawshank Redemption, Fight Club, Goodfellas, The Prestige, The Godfather: Part II, Kill Bill: Vol. 1, and V for Vendetta.
+E       assert False
+
+tests/test_semantic.py:40: AssertionError</failure></testcase><testcase classname="tests.test_semantic" name="test_question_8_spielberg_scifi_summaries" time="73.856" /><testcase classname="tests.test_semantic" name="test_question_9_police_movies_before_1990" time="251.383"><failure message="AssertionError: Judge failed the response. Reason: NO&#10;  &#10;  The answer states it's unable to answer, therefore it doesn't provide any movies for evaluation. It fails to meet the criteria because it doesn't attempt to fulfill the request.&#10;  Agent Response: I am unable to answer the question with the available tools.&#10;assert False">movie_agent = &lt;agent.MovieAgent object at 0x11817a780&gt;
+
+    def test_question_9_police_movies_before_1990(movie_agent):
+        """
+        Question: List of movies before 1990 that have involvement of police in the plot.
+        """
+        question = "List of movies before 1990 that have involvement of police in the plot. Hint, this needs to be based on similarity search and not just the word police."
+        response = movie_agent.run(question)
+    
+        criteria = """
+        1. The listed movies must have release years strictly before 1990.
+        2. The plot descriptions must involve police.
+        3. The answer should not include movies from 1990 or later (e.g., L.A. Confidential - 1997, Se7en - 1995 are fail cases).
+        """
+    
+        passed, reason = llm_evaluate(question, response, criteria)
+&gt;       assert passed, f"Judge failed the response. Reason: {reason}\nAgent Response: {response}"
+E       AssertionError: Judge failed the response. Reason: NO
+E         
+E         The answer states it's unable to answer, therefore it doesn't provide any movies for evaluation. It fails to meet the criteria because it doesn't attempt to fulfill the request.
+E         Agent Response: I am unable to answer the question with the available tools.
+E       assert False
+
+tests/test_semantic.py:75: AssertionError</failure></testcase><testcase classname="tests.test_semantic" name="test_question_7_comedy_death_semantic" time="22.132"><failure message="AssertionError: Judge failed. Reason: NO&#10;  &#10;  The actual answer includes &quot;Three Billboards Outside Ebbing, Missouri&quot; which was not present in the retrieved context. While it *could* be argued as dark comedy, the bot should only use information provided. Furthermore, the answer includes &quot;The Station Agent&quot; which, while containing themes of loss, isn't primarily a comedy. The answer demonstrates a lack of strict adherence to the provided context and evaluation criteria.&#10;  Retrieval Context: Harold and Maude (Year: 1971, Plot: Young, rich, and obsessed with death, Harold finds himself changed forever when he meets lively septuagenarian Maude at a funeral.)&#10;  Shaun of the Dead (Year: 2004, Plot: A man's uneventful life is disrupted by the zombie apocalypse.)&#10;  The Station Agent (Year: 2003, Plot: When his only friend dies, a man born with dwarfism moves to rural New Jersey to live a life of solitude, only to meet a chatty hot dog vendor and a woman dealing with her own personal loss.)&#10;  Knives Out (Year: 2019, Plot: A detective investigates the death of a patriarch of an eccentric, combative family.)&#10;  Ed Wood (Year: 1994, Plot: Ambitious but troubled movie director Edward D. Wood Jr. tries his best to fulfill his dreams, despite his lack of talent.)&#10;  Zelig (Year: 1983, Plot: &quot;Documentary&quot; about a man who can look and act like whoever he's around, and meets various famous people.)&#10;  Young Frankenstein (Year: 1974, Plot: An American grandson of the infamous scientist, struggling to prove that his grandfather was not as insane as people believe, is invited to Transylvania, where he discovers the process that reanimates a dead body.)&#10;  Soul (Year: 2020, Plot: After landing the gig of a lifetime, a New York jazz pianist suddenly finds himself trapped in a strange land between Earth and the afterlife.)&#10;  50/50 (Year: 2011, Plot: Inspired by a true story, a comedy centered on a 27-year-old guy who learns of his cancer diagnosis and his subsequent struggle to beat the disease.)&#10;  Lost in Translation (Year: 2003, Plot: A faded movie star and a neglected young woman form an unlikely bond after crossing paths in Tokyo.)&#10;  Agent Response: Shaun of the Dead (2004), Harold and Maude (1971), Knives Out (2019), Three Billboards Outside Ebbing, Missouri (2017), The Station Agent (2003)&#10;assert False">movie_agent = &lt;agent.MovieAgent object at 0x11817a780&gt;
+
+    def test_question_7_comedy_death_semantic(movie_agent):
+        """
+        Question: List of movies from the comedy genre where there is death or dead people involved. Hint, use overview column.
+        Semantic Check:
+        - Verifies the agent's answer against the retrieval context.
+        - Ensures that IF valid comedies are found in the vector search, they are included.
+        """
+        question = "List of movies from the comedy genre where there is death or dead people involved. Hint, use overview column."
+    
+        # 1. Run Agent
+        response = movie_agent.run(question)
+    
+        # 2. Manual Retrieval to Capture Context (What the agent saw)
+        # Mirroring the agent's logic: Search for plot keywords
+        # Note: We use the helper directly if available, or just use the vector store
+        # Since the agent might have set a filter, we must respect it to show the judge the TRUE context
+    
+        k_candidates = 500 if movie_agent.active_filter_titles else 50
+        retrieved_docs = movie_agent.vector_store.similarity_search("movies about death or dead people", k=k_candidates)
+    
+        filtered_context_docs = []
+        for doc in retrieved_docs:
+            if movie_agent.active_filter_titles:
+                if doc.metadata['title'] not in movie_agent.active_filter_titles:
+                    continue
+            filtered_context_docs.append(doc)
+    
+        # Take top 10 of what remains
+        final_docs = filtered_context_docs[:10]
+    
+        retrieved_context = "\n".join([f"{d.metadata['title']} (Year: {d.metadata.get('year')}, Plot: {d.page_content})" for d in final_docs])
+    
+        # 3. Evaluation Criteria
+        criteria = """
+        1. The answer must identify movies deemed as 'Comedy' (or Dark Comedy) that involve death.
+        2. The answer must be consistent with the Retrieved Context.
+           - If the Context contains 'Harold and Maude', the answer should likely include it.
+           - If the Context contains ONLY Dramas, the agent should correctly identify that or return the 'closest' matches that have comedy elements.
+        3. The answer should NOT simply list all retrieved movies if they are clearly not comedies (like 'Schindler's List' or 'The Green Mile').
+        4. It is ACCEPTABLE if the agent finds fewer than 5 movies if the retrieval context didn't provide enough comedies.
+        """
+    
+        from tests.utils import llm_evaluate_with_retrieval
+        passed, reason = llm_evaluate_with_retrieval(question, response, retrieved_context, criteria)
+&gt;       assert passed, f"Judge failed. Reason: {reason}\nRetrieval Context: {retrieved_context}\nAgent Response: {response}"
+E       AssertionError: Judge failed. Reason: NO
+E         
+E         The actual answer includes "Three Billboards Outside Ebbing, Missouri" which was not present in the retrieved context. While it *could* be argued as dark comedy, the bot should only use information provided. Furthermore, the answer includes "The Station Agent" which, while containing themes of loss, isn't primarily a comedy. The answer demonstrates a lack of strict adherence to the provided context and evaluation criteria.
+E         Retrieval Context: Harold and Maude (Year: 1971, Plot: Young, rich, and obsessed with death, Harold finds himself changed forever when he meets lively septuagenarian Maude at a funeral.)
+E         Shaun of the Dead (Year: 2004, Plot: A man's uneventful life is disrupted by the zombie apocalypse.)
+E         The Station Agent (Year: 2003, Plot: When his only friend dies, a man born with dwarfism moves to rural New Jersey to live a life of solitude, only to meet a chatty hot dog vendor and a woman dealing with her own personal loss.)
+E         Knives Out (Year: 2019, Plot: A detective investigates the death of a patriarch of an eccentric, combative family.)
+E         Ed Wood (Year: 1994, Plot: Ambitious but troubled movie director Edward D. Wood Jr. tries his best to fulfill his dreams, despite his lack of talent.)
+E         Zelig (Year: 1983, Plot: "Documentary" about a man who can look and act like whoever he's around, and meets various famous people.)
+E         Young Frankenstein (Year: 1974, Plot: An American grandson of the infamous scientist, struggling to prove that his grandfather was not as insane as people believe, is invited to Transylvania, where he discovers the process that reanimates a dead body.)
+E         Soul (Year: 2020, Plot: After landing the gig of a lifetime, a New York jazz pianist suddenly finds himself trapped in a strange land between Earth and the afterlife.)
+E         50/50 (Year: 2011, Plot: Inspired by a true story, a comedy centered on a 27-year-old guy who learns of his cancer diagnosis and his subsequent struggle to beat the disease.)
+E         Lost in Translation (Year: 2003, Plot: A faded movie star and a neglected young woman form an unlikely bond after crossing paths in Tokyo.)
+E         Agent Response: Shaun of the Dead (2004), Harold and Maude (1971), Knives Out (2019), Three Billboards Outside Ebbing, Missouri (2017), The Station Agent (2003)
+E       assert False
+
+tests/test_semantic.py:121: AssertionError</failure></testcase><testcase classname="tests.test_suggestions" name="test_suggestions_known_movie" time="0.949" /><testcase classname="tests.test_suggestions" name="test_suggestions_no_movie" time="0.449" /></testsuite></testsuites>
