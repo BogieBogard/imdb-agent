@@ -11,9 +11,12 @@ warnings.filterwarnings("ignore", category=UserWarning, module="torch.nn.modules
 warnings.filterwarnings("ignore", category=FutureWarning, module="torch.nn.utils.weight_norm")
 warnings.filterwarnings("ignore", category=UserWarning, module="torch.functional")
 warnings.filterwarnings("ignore", category=UserWarning, module="kokoro.istftnet")
-# Suppress transformers deprecation warnings (will be fixed in transformers v5)
-warnings.filterwarnings("ignore", message=".*return_token_timestamps.*", category=FutureWarning)
-warnings.filterwarnings("ignore", message=".*forced_decoder_ids.*", category=FutureWarning)
+# Suppress transformers deprecation warnings that we can't fix (internal to transformers library)
+# return_token_timestamps warning comes from WhisperFeatureExtractor initialization - will be fixed in transformers v5
+# forced_decoder_ids warning appears for English-only models (whisper-base.en) which don't support
+# the new language/task API - will be fixed in transformers v5
+warnings.filterwarnings("ignore", message=".*return_token_timestamps.*")
+warnings.filterwarnings("ignore", message=".*forced_decoder_ids.*")
 
 st.set_page_config(page_title="IMDB Voice Agent", page_icon="🎬")
 
@@ -53,6 +56,10 @@ def load_stt_model():
     from transformers import pipeline
     # Using OpenAI Whisper Base English (smaller, faster, less prone to hallucination on short audio)
     # Forced to CPU for debugging stability
+    # Create pipeline - warnings about return_token_timestamps and forced_decoder_ids are from
+    # internal transformers code and will be fixed in transformers v5
+    # Note: whisper-base.en is English-only, so we cannot use language/task parameters
+    # (those are only for multilingual models)
     return pipeline("automatic-speech-recognition", model="openai/whisper-base.en", device="cpu")
 
 @st.cache_resource
@@ -138,7 +145,7 @@ if audio_value:
                 wav_path = tmp_raw_path
 
             # Pass the file path to pipeline (more robust than raw numpy for some versions)
-            # For English-only models (.en), we must NOT pass language='english'
+            # Note: whisper-base.en is English-only, so we cannot pass language/task parameters
             result = stt_pipe(wav_path)
             user_query = result["text"]
             
